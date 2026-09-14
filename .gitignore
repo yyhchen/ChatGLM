@@ -29,6 +29,11 @@ debug.ipynb
 **/debug
 **/__pycache__
 **/*.json
+!**/config.example.json
 **/*.txt
+!**/requirements*.txt
 **/.DS_Store
 .trae/
+!debug/
+debug/*
+!debug/README.md

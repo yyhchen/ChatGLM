@@ -1,156 +1,108 @@
-# Graph RAG
+# GraphRAG 教学案例
 
-本地部署使用 `GraphRAG`
+本目录记录 GraphRAG 的索引、查询、Parquet 产物和 Neo4j 可视化实验。它是一个**版本敏感的实验案例**：GraphRAG 的配置格式、CLI 和模型要求变化较快，请把本文档视为学习路径与历史实验说明，而不是一键部署脚本。
 
-- **model:** [Qwen/Qwen2-7B-Instruct](https://huggingface.co/Qwen/Qwen2-7B-Instruct)
-- **embeddings model:** [BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3)
-- **dataset:** [cfa532/CHLAWS](https://huggingface.co/datasets/cfa532/CHLAWS/tree/main)
-- **hardware:** A800-80G * 1
+原始实验使用 Qwen2-7B-Instruct、bge-m3、CHLAWS 数据集和单张 A800-80G。学习者可替换为自己的兼容模型、嵌入服务和文本数据。
 
----
+## 目录地图
 
-<br>
-<br>
+| 路径 | 内容 | 用途 |
+| --- | --- | --- |
+| input/ | 示例文本输入 | 新建索引时的原始文档参考 |
+| data/ | 已生成的 GraphRAG Parquet 产物 | 理解实体、关系、社区和报告的输出结构 |
+| notebook/global_search.ipynb | 全局检索 Notebook | 阅读社区级主题总结流程 |
+| notebook/local_search.ipynb | 局部检索 Notebook | 阅读实体和关系局部检索流程 |
+| neo4j_display/ | Neo4j 可视化 Notebook 与说明 | 将图谱导入 Neo4j 浏览 |
+| report.md | 历史实验记录 | 排错和服务配置参考 |
 
+## 环境与服务
 
-## 🛠 environments
+GraphRAG 索引通常应与聊天模型服务、嵌入模型服务隔离。建议至少准备三个环境：
 
-**注意：以下三个步骤的环境最好都要单独一个环境，然后单独安装包和单独启动！！推荐使用 `python -m venv YOUR_ENV_NAME` 进行虚拟环境创建**
+1. 聊天模型服务：提供 OpenAI 兼容 chat completions 接口。
+2. 嵌入模型服务：提供 OpenAI 兼容 embeddings 接口。
+3. GraphRAG CLI / Notebook：安装本目录 requirements.txt，并配置上面两个服务。
 
-<br>
+~~~
+cd GraphRAG
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+~~~
 
-1. 启动 LLM 的 OpenAI 服务（推荐用vLLM，单独一个环境）
+requirements.txt 覆盖 GraphRAG CLI、Notebook 和 Neo4j 可视化的最小依赖。vLLM、FastChat、模型权重和 GPU 驱动由外部环境负责，不在此依赖清单内。
 
-    ```bash
-    python -m vllm.entrypoints.openai.api_server --model /root/private_data/models/Qwen/Qwen2-7B-Instruct --served-model-name Qwen2-7B-Instruct --gpu-memory-utilization 0.3
-    ```
+## 端点约定
 
+历史文档中的默认端点仅作示例：
 
-<br>
+| 服务 | 示例地址 | 说明 |
+| --- | --- | --- |
+| 聊天模型 | http://127.0.0.1:8000/v1 | 用于抽取、摘要和回答 |
+| 嵌入模型 | http://127.0.0.1:8200/v1 | 用于文本向量化 |
+| Neo4j | bolt://127.0.0.1:7687 | 可选，仅用于图谱浏览 |
 
+请在自己的 GraphRAG settings 配置中替换 API Key、模型名、地址和并发设置。较弱的模型可能无法稳定产出 JSON 或足够连通的实体图，因此需要降低并发、增大模型或改进输入文本。
 
+## 两条学习路径
 
-2. 启动 embeddings 模型的 OpenAI 服务 (目前好像仅支持 bge 系列, 推荐用 FastChat 启动, 单独一个环境)
+### A. 查询已有产物
 
-    先下载 [FastChat 0.2.35](https://github.com/lm-sys/FastChat/releases), 解压后: 
+本目录已保留 data/ 中的历史 Parquet 输出，适合先了解 GraphRAG 生成了哪些表和字段。打开 global_search.ipynb 或 local_search.ipynb 前，先检查其 INPUT_DIR 配置。
 
-    ```bash
-    cd FastChat
-    pip3 install --upgrade pip
-    pip3 install -e ".[model_worker,webui]"
-    ```
+当前 Notebook 的历史 INPUT_DIR 指向 output/20240807-093938/artifacts。它不是一个自动发现目录；请手动改为仓库中的 data/，或改为你自己的 GraphRAG artifacts 目录，然后再运行相应单元格。
 
-    再启动(建议写在一个 `.sh` 进行运行):
-    ```sh
-    python -m fastchat.serve.controller --host 0.0.0.0 --port 21003 &
+这条路径主要用于理解查询流程，未必与当前安装的 GraphRAG 版本完全兼容。
 
-    python -m fastchat.serve.model_worker --model-path /root/private_data/models/BAAI/bge-m3 --model-names gpt-4 --num-gpus 1 --controller-address http://0.0.0.0:21003 &
+### B. 从自己的文本重新索引
 
-    python -m fastchat.serve.openai_api_server --host 0.0.0.0 --port 8200 --controller-address http://0.0.0.0:21003
-    ```
+推荐在新工作区操作，不覆盖仓库内历史产物：
 
-<br>
+~~~
+mkdir -p ./ragtest/input
+# 将自己的 TXT 文档放入 ragtest/input/
+python -m graphrag.index --init --root ./ragtest
+~~~
 
+初始化会生成配置和本地环境文件。填写聊天模型与嵌入服务后，再执行：
 
+~~~
+python -m graphrag.index --root ./ragtest
+~~~
 
-3. 按照 [GraphRAG](https://microsoft.github.io/graphrag/posts/get_started/) 步骤进行部署:
+索引管线示例：
 
-    首先安装 `graphrag`:
+![GraphRAG 索引管线](../assets/graphrag_indexing_pipeline.png)
 
-    ```bash
-    pip install graphrag
-    ```
+完成索引示例：
 
-    然后创建 `indexer`:
+![GraphRAG 索引完成](../assets/completed_success.png)
 
-    - a. 创建存放 数据集 的文件夹, 然后放入自己想要进行实验的数据集
-    ```sh
-    mkdir -p ./ragtest/input
-    ``` 
+具体参数因 GraphRAG 版本而异；如当前 CLI 与命令不匹配，请优先查阅所安装版本的官方文档，再将输出目录作为 Notebook 的 INPUT_DIR。
 
+## 查询与可视化
 
-    - b. 设置 `workspace`，使用 `graphrag.index --init` 初始化工作区
-    ```sh
-    python -m graphrag.index --init --root ./ragtest
-    ```
-    这一步会产生两个文件 `.env` 和 `settings.yaml`. 本次案例只更改 `settings.yaml`
+完成索引后，可按所安装版本提供的 CLI 或 Notebook 进行全局、局部查询。全局查询适合“主题是什么”这类社区级问题；局部查询适合“某实体与谁有关”这类关系问题。
 
+全局查询输出示例：
 
-    - c. 初始化 `workspace` 后，创建 `index pipeline`
-    ```sh
-    python -m graphrag.index --root ./ragtest
-    ```
-<img src='https://github.com/yyhchen/LLM-Application/blob/main/assets/graphrag_indexing_pipeline.png'>
+![GraphRAG 全局查询示例](../assets/graphrag_global_search.png)
 
-<img src='https://github.com/yyhchen/LLM-Application/blob/main/assets/completed_success.png'>
+局部查询输出示例：
 
+![GraphRAG 局部查询示例](../assets/image.png)
 
-    - d. running query engine
+Neo4j 可视化请参阅 [neo4j_display/README.md](neo4j_display/README.md)。它需要单独运行 Neo4j，并在 Notebook 中填写本机数据库连接信息。演示用密码不是生产安全配置。
 
-    全局搜索(global search):
-    ```sh
-    python -m graphrag.query \
-    --root ./ragtest \
-    --method global \
-    "What are the top themes in this story?"
-    ```
-<img src='https://github.com/yyhchen/LLM-Application/blob/main/assets/graphrag_global_search.png'>
+## 常见问题
 
-    局部搜索(local search):
-    ```sh
-    python -m graphrag.query \
-    --root ./ragtest \
-    --method local \
-    "Who is Scrooge, and what are his main relationships?"
-    ``
-<img src='https://github.com/yyhchen/LLM-Application/blob/main/assets/image.png'>
+- EmptyNetworkError：抽取出的实体/关系过少，图聚类无法形成网络。尝试改进文本、提高模型能力或检查模型输出格式。
+- JSON 解析失败：部分本地模型不稳定支持结构化输出；按当前 GraphRAG 版本设置相应兼容选项，或使用更强模型。
+- 查询找不到产物：检查 Notebook 的 INPUT_DIR 是否指向真实 artifacts 或 data/。
+- 嵌入请求失败：确认 embeddings 服务路径、模型名和 OpenAI 兼容响应格式。
+- 内存或显存不足：缩小输入、降低并发、分批索引，或使用更高资源的设备。
 
-<br>
-<br>
+## 延伸阅读
 
-
-
-## ❌ 常见错误
-
-### 控制台出现：❌ Errors occurred during the pipeline run, see logs for more details.
-
-请到当前目录下(./output/.../report)查找日志 
-
-1. datashaper.workflow.workflow ERROR Error executing verb "cluster_graph" in create_base_entity_graph: EmptyNetworkError
-
-
-**原因：** 可能是模型参数太小了，能力不够构建 KG
-
-
-
-
-<br>
-<br>
-
-
-## ⚙️ settings.yaml
-
-部分节选
-
-
-```yaml
-llm:
-  api_key: ${GRAPHRAG_API_KEY}
-  type: openai_chat # or azure_openai_chat
-  model: Qwen2-7B-Instruct
-  model_supports_json: false # 模型不是很好的必须设置为false
-  api_base: http://0.0.0.0:8000/v1
-
-
-...
-
-
-embeddings:
-  async_mode: threaded # or asyncio
-  llm:
-    api_key: ${GRAPHRAG_API_KEY}
-    type: openai_embedding # or azure_openai_embedding
-    model: gpt-4    # 设置为gpt-4 (无论用任何 embeddings 模型)
-    api_base: http://0.0.0.0:8200/v1
-
-```
+- [Microsoft GraphRAG 入门文档](https://microsoft.github.io/graphrag/posts/get_started/)
+- [Neo4j 可视化说明](neo4j_display/README.md)

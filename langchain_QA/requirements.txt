@@ -1,0 +1,14 @@
+# Local Qwen + Chroma RAG demo.
+# Install a PyTorch build appropriate for your CUDA/CPU environment first if
+# the default PyPI wheel is not suitable.
+torch
+transformers==4.43.3
+accelerate==0.33.0
+sentence-transformers==3.0.1
+gradio==4.40.0
+langchain==0.2.12
+langchain-community==0.2.11
+langchain-core==0.2.34
+langchain-chroma
+chromadb==0.5.5
+requests==2.32.3

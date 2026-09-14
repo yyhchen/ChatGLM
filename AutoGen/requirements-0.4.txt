@@ -1,0 +1,5 @@
+# Dependencies for tutorial/tutorial_autogen_0_4_7_version.ipynb.
+# Keep this environment separate from the legacy PyAutoGen examples.
+autogen-agentchat==0.4.7
+autogen-ext[openai]==0.4.7
+jupyter

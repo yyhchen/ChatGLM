@@ -1,0 +1,7 @@
+# 运行 app case 三个主新闻爬虫所需的第三方包。
+# 标准库（asyncio、json、logging 等）无需写入此文件。
+requests>=2.31
+beautifulsoup4>=4.12
+openai>=1.0
+python-dotenv>=1.0
+crawl4ai>=0.4

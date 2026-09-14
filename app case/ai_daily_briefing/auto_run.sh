@@ -36,9 +36,13 @@ get_current_date() {
 
 # 检查文件是否存在
 check_files() {
-    local current_date=$(get_current_date)
-    local json_file="${current_date}.json"
-    local txt_file="${current_date}_news_data.txt"
+    local current_date current_year current_month json_file txt_file
+    current_date=$(get_current_date)
+    current_year=${current_date%%_*}
+    current_month=${current_date#*_}
+    current_month=${current_month%%_*}
+    json_file="data/json/${current_year}/${current_month}/${current_date}.json"
+    txt_file="data/txt/${current_year}/${current_month}/${current_date}_news_data.txt"
     
     print_info "检查当天数据文件..."
     

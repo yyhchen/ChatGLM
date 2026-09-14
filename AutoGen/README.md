@@ -1,96 +1,64 @@
-# AutoGen
+# AutoGen 教学案例
 
-本地LLM部署 + AutoGen
+本目录用 Notebook 演示多 Agent 协作、工具调用、代码执行和 RAG。它包含两条**不能混装**的学习路径：旧版 PyAutoGen 示例与 AutoGen 0.4.7 教程。
 
-- [AutoGen Getting-Started](https://microsoft.github.io/autogen/docs/Getting-Started)
+## 选择正确的路径
 
-- [paper](https://arxiv.org/abs/2308.08155)
+| 路径 | 入口 | 适用内容 | 依赖清单 |
+| --- | --- | --- | --- |
+| Legacy PyAutoGen | autogen.ipynb、autogen_rag.ipynb | GroupChat、定制 Speaker、RetrieveChat 风格 RAG | requirements-legacy.txt |
+| AutoGen 0.4.7 | tutorial/tutorial_autogen_0_4_7_version.ipynb | 新版 AgentChat API 与 0.4 教程 | requirements-0.4.txt |
+| 基础 Notebook | tutorial/ 下其他 Notebook | Code Executor、ConversableAgent、Tools、UserProxyAgent | 依其 API 世代选择环境 |
 
----
+不要在同一个虚拟环境同时安装 legacy 和 0.4 依赖。两代 API 的模块名、对象模型和示例代码不兼容。
 
-<br>
-<br>
+## 环境准备
 
-## AutoGen更新了0.4.7稳定版本
+建议为每条路径创建单独环境，并安装 Jupyter：
 
-🔥 [新 tutorial base version: 0.4.7](https://github.com/yyhchen/LLM-Application/blob/main/AutoGen/tutorial/tutorial_autogen_0_4_7_version.ipynb)
+~~~
+cd AutoGen
+python3 -m venv .venv-legacy
+source .venv-legacy/bin/activate
+python3 -m pip install -r requirements-legacy.txt
+jupyter lab
+~~~
 
+学习 0.4.7 教程时，请改用 requirements-0.4.txt 与另一份虚拟环境。Notebook 文件名中包含版本号，是选择依赖的依据。
 
+## 模型服务前置条件
 
-<br>
-<br>
+大部分示例需要一个 OpenAI 兼容聊天接口。openai_api.sh 是 FastChat 的**历史参考启动脚本**，其中包含作者机器上的模型路径：
 
-## 📖 Introduction
-
-AutoGen 是一个用于构建和训练基于大型语言模型（LLM）的对话代理的框架。它允许用户通过定义一组任务和一组代理来构建一个对话系统，并使用 LLM 来训练代理之间的交互，以实现特定的任务目标。
-
-<img src='https://github.com/yyhchen/LLM-Application/blob/main/assets/autogen_intro.png'>
-
-
-<br>
-<br>
-
-
-## 📦 environments
-python >=3.8 & <3.13
-
-安装 `AutoGen`
-```sh
-pip install pyautogen
-```
-
-
-<br>
-<br>
-<br>
-
-
-## 🔨 One of demo Guide
-
-<img src="https://github.com/yyhchen/LLM-Application/blob/main/assets/autogen_speaker.png">
-
-构建一个简单的 StateFlow 模型，定制一个 Speaker，定义如下 Agent：
-- Initializer：发送任务启动工作流程
-- Coder：编写代码从 互联网检索论文（这个是真可以～）
-- Executor：执行代码
-- Scientist：阅读论文并写总结
-
-<br>
-
-### API
-
-先启动 API, 运行 [openai_api.sh](https://github.com/yyhchen/LLM-Application/tree/main/AutoGen/openai_api.sh):
-
-```sh
+~~~
 bash openai_api.sh
-```
+~~~
 
-<br>
+运行前必须把模型路径、模型名、端口和 GPU 数量改为自己的环境。该脚本默认将 OpenAI 兼容 API 暴露在 8000/v1；如果使用 vLLM、云服务或其他兼容服务，只需在 Notebook 的模型配置中填入对应地址和密钥。
 
-### AutoGen案例
+## 推荐学习顺序
 
-[autogen.ipynb](https://github.com/yyhchen/LLM-Application/tree/main/AutoGen/autogen.ipynb) 改编自 [AutoGen官网案例](https://microsoft.github.io/autogen/docs/topics/groupchat/customized_speaker_selection) 
+1. 先打开 tutorial/ConversableAgent.ipynb 和 tutorial/Tools.ipynb，理解 Agent 的消息与工具接口。
+2. 再学习 autogen.ipynb：它演示 Initializer、Coder、Executor、Scientist 的 StateFlow/Speaker 协作。
+3. 需要知识库增强时运行 autogen_rag.ipynb，并准备自己的文本与向量库。
+4. 最后切换到 tutorial/tutorial_autogen_0_4_7_version.ipynb，比较新版 API 与 legacy API 的差异。
 
+## 代码执行安全
 
-<br>
-<br>
+部分案例会让 Executor 或 UserProxyAgent 执行模型生成的代码。仅在隔离的本地环境、容器或受限沙箱中运行；不要让示例访问生产密钥、个人文件或具有高权限的网络环境。
 
+## 常见问题
 
-## 🔍 RAG in AutoGen 
+- ImportError 或 API 不一致：通常是把 legacy 与 0.4 包装到了同一个环境。请重新创建隔离环境。
+- 连接不到模型：检查 Notebook 中的 base URL、模型名、API Key 和服务监听端口。
+- RAG 初始化失败：确认向量库依赖版本、文档路径和嵌入模型配置一致。
+- 代码执行失败：先检查执行器工作目录、Python 环境和权限，再查看 Agent 的中间消息。
 
-AutoGen 支持 RAG，通过在 LLM 的输入中添加来自外部数据源的文本片段，以增强模型的生成能力。
+## 延伸阅读
 
-<br>
+- [AutoGen Getting Started](https://microsoft.github.io/autogen/docs/Getting-Started)
+- [AutoGen 论文](https://arxiv.org/abs/2308.08155)
 
-### envs
-```bash
-# 加 -q 控制台没有安装信息
-pip install pyautogen[retrievechat] langchain "chromadb<0.4.15" -q
-```
+![AutoGen 概览](../assets/autogen_intro.png)
 
-<br>
-
-
-### 案例
-
-[autogen_rag.ipynb](https://github.com/yyhchen/LLM-Application/tree/main/AutoGen/autogen_rag.ipynb)
+![Speaker 协作示例](../assets/autogen_speaker.png)

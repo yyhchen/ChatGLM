@@ -1,0 +1,8 @@
+# GraphRAG command-line workflow and the optional Neo4j notebook.
+# Model servers (vLLM / FastChat) are started separately and are intentionally
+# not Python dependencies of this workspace.
+graphrag
+jupyter
+neo4j==5.22.0
+pandas
+pyarrow

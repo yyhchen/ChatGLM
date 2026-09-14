@@ -1,0 +1,10 @@
+# Dependencies for the legacy AutoGen notebooks:
+#   autogen.ipynb
+#   autogen_rag.ipynb
+#
+# The 0.4 tutorial uses a different package layout. See AutoGen/README.md
+# before installing both environments together.
+pyautogen==0.2.33
+langchain==0.2.12
+chromadb<0.4.15
+jupyter

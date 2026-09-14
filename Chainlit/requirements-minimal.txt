@@ -1,0 +1,17 @@
+# Minimal dependencies for app.py and multi_chat.py.
+# The existing requirements.txt is a historical fully frozen environment.
+chainlit==1.1.402
+fastapi==0.103.2
+uvicorn==0.25.0
+openai==1.37.2
+langchain==0.2.12
+langchain-community==0.2.11
+langchain-core==0.2.34
+langchain-openai==0.1.22
+langchain-text-splitters==0.2.2
+langchainhub==0.1.21
+chromadb==0.4.14
+duckduckgo-search
+pydantic
+requests==2.32.3
+zhipuai==2.1.4.20230814
